@@ -94,6 +94,10 @@ CRITICAL DEDUPLICATION RULES:
    - Same CVE but different package/ecosystem is NOT a duplicate
    - Same package/ecosystem but different CVE is NOT a duplicate
 
+5. Different finding_class is NOT a duplicate even under the same CWE:
+   - client_side_path_traversal vs a server-side/dynamic path-traversal finding
+     both map to CWE-22, but they are distinct classes fixed by different code
+
 COMPARISON GUIDELINES:
 - Focus on the technical root cause, not surface-level similarities
 - Same vulnerability type (SQLi, XSS) doesn't mean duplicate - location matters
@@ -103,6 +107,8 @@ COMPARISON GUIDELINES:
 FIELDS TO ANALYZE:
 - title, description: General vulnerability info
 - target, endpoint, method: Exact location of vulnerability
+- finding_class: Machine-readable class; a different finding_class means a
+  different class of bug even under a shared CWE - not a duplicate
 - technical_analysis: Root cause details
 - poc_description: How it's exploited
 - impact: What damage it can cause
@@ -145,6 +151,7 @@ def _prepare_report_for_comparison(report: dict[str, Any]) -> dict[str, Any]:
         "endpoint",
         "method",
         "cve",
+        "finding_class",
         "dependency_metadata",
     ]
 
