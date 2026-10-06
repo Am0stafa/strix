@@ -86,6 +86,35 @@ def test_assigned_risk_skill_without_coverage_becomes_a_gap() -> None:
     assert [gap["risk_area"] for gap in gaps] == ["sql injection"]
 
 
+def test_substring_match_does_not_hide_a_gap() -> None:
+    """A short class token matches whole words, not substrings: 'brute force' is
+    not RCE coverage, 'enforcement' is not 'rce', 'corridor' is not 'idor'."""
+    cases = [
+        ("rce", "POST /login", "brute force protection"),
+        ("rce", "GET /api/resources/{id}", "object-level authorization"),
+        ("rce", "Access control enforcement", "authorization"),
+        ("idor", "GET /building/corridor/{id}", "information disclosure"),
+    ]
+    for skill, surface, risk in cases:
+        doc = _document(
+            entries=[_entry(surface=surface, risk_area=risk)],
+            agent_graph=_graph(metadata={"agent-1": {"skills": [skill]}}),
+        )
+        classes = [g["risk_area"] for g in doc["gaps"] if g["kind"] == "unrecorded_risk_class"]
+        assert skill.replace("_", " ") in classes, (skill, surface, risk, classes)
+
+
+def test_simple_plural_still_counts_as_coverage() -> None:
+    """Whole-word matching tolerates a trivial plural, so 'passwords' /
+    'credentials' still cover weak_password_detection."""
+    doc = _document(
+        entries=[_entry(risk_area="weak passwords and credentials reviewed", surface="/login")],
+        agent_graph=_graph(metadata={"agent-1": {"skills": ["weak_password_detection"]}}),
+    )
+
+    assert not [g for g in doc["gaps"] if g["kind"] == "unrecorded_risk_class"]
+
+
 def test_recorded_risk_class_is_not_reported_as_a_gap() -> None:
     doc = _document(
         entries=[_entry(risk_area="SQL injection", surface="GET /search?q=")],

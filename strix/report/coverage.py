@@ -309,10 +309,34 @@ def cwe_for_skill(skill: str) -> tuple[str, ...]:
     return vclass.cwe if vclass else ()
 
 
+def _term_in_words(term: str, words: set[str]) -> bool:
+    """A phrasing word matches a row word exactly, or as its simple plural.
+
+    Matching whole words, not substrings, is what stops a short class token
+    like ``rce`` matching inside ``brute force`` / ``enforcement`` or ``idor``
+    inside ``corridor``. The plural allowance (``worker`` matches a ``workers``
+    row, ``password`` a ``passwords`` row) keeps a trivial inflection from
+    opening a false gap.
+
+    Only the forward direction (phrasing term + ``s``) is allowed, never the
+    reverse (row word + ``s`` == term): the reverse would let the row word
+    ``xs`` satisfy the ``xss`` class alias (``"xs" + "s" == "xss"``), so an
+    unrelated XS-Leaks row would falsely mark XSS covered. A phrasing that
+    needs to match a singular row carries the singular spelling as its own
+    alias instead.
+    """
+    return term in words or f"{term}s" in words
+
+
 def _entry_is_about(entry: dict[str, Any], phrasings: list[list[str]]) -> bool:
-    """True when a ledger row plausibly concerns any phrasing of a risk class."""
-    haystack = _normalized(f"{entry.get('risk_area', '')} {entry.get('surface', '')}")
-    return any(all(term in haystack for term in terms) for terms in phrasings)
+    """True when a ledger row names any phrasing of a risk class.
+
+    A phrasing matches when every one of its words appears as a **word** in the
+    row (``risk_area`` + ``surface``) — not as a substring, so "brute force"
+    never counts as ``rce`` coverage and "corridor" never as ``idor``.
+    """
+    words = set(_normalized(f"{entry.get('risk_area', '')} {entry.get('surface', '')}").split())
+    return any(all(_term_in_words(term, words) for term in terms) for terms in phrasings)
 
 
 def _entry_authored_by(entry: dict[str, Any], owner_ids: set[str]) -> bool:
