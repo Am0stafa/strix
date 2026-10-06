@@ -315,6 +315,26 @@ def _entry_is_about(entry: dict[str, Any], phrasings: list[list[str]]) -> bool:
     return any(all(term in haystack for term in terms) for terms in phrasings)
 
 
+def _entry_authored_by(entry: dict[str, Any], owner_ids: set[str]) -> bool:
+    """True when this row — now, or in a superseded revision — was written by
+    one of *owner_ids*.
+
+    ``update_coverage`` overwrites ``agent_id`` with the updater's, so a surface
+    a carrier genuinely assessed would look unexamined after an unrelated agent
+    edits the shared row. History preserves the earlier author, so an earlier
+    assessment by a carrier still counts.
+    """
+    if str(entry.get("agent_id") or "") in owner_ids:
+        return True
+    history = entry.get("history")
+    if isinstance(history, list):
+        return any(
+            isinstance(item, dict) and str(item.get("agent_id") or "") in owner_ids
+            for item in history
+        )
+    return False
+
+
 def _topics_for(skill: str) -> list[tuple[str | None, list[list[str]]]]:
     """The independently-accountable topics a carried skill must cover.
 
@@ -377,7 +397,7 @@ def skill_coverage_gaps(
         vclass = VULN_CLASSES.get(skill)
         if vclass is not None and vclass.sub_topics:
             owner_ids = carrier_ids.get(skill, set())
-            relevant = [e for e in entries if str(e.get("agent_id") or "") in owner_ids]
+            relevant = [e for e in entries if _entry_authored_by(e, owner_ids)]
         else:
             relevant = entries
         uncovered = [

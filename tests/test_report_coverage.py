@@ -203,6 +203,39 @@ def test_unrelated_agents_row_does_not_cover_a_browser_subtopic() -> None:
     assert "postMessage" not in sub  # the browser agent's own row still counts
 
 
+def test_updated_browser_row_keeps_its_carrier_authorship() -> None:
+    """update_coverage overwrites agent_id with the updater's; a browser surface a
+    carrier assessed must still count via the author preserved in history."""
+    doc = _document(
+        entries=[
+            _entry(
+                risk_area="client-side path traversal",
+                surface="fetch from route param",
+                agent_id="agent-2",  # current author after an unrelated update
+                agent_name="redirect-tester",
+                history=[
+                    {
+                        "outcome": "no_issue_found",
+                        "agent_id": "agent-1",  # the carrier who first assessed it
+                        "agent_name": "browser-tester",
+                    }
+                ],
+            ),
+        ],
+        agent_graph=_graph(
+            statuses={"agent-1": "completed", "agent-2": "completed"},
+            names={"agent-1": "browser-tester", "agent-2": "redirect-tester"},
+            metadata={
+                "agent-1": {"skills": ["browser_security"]},
+                "agent-2": {"skills": ["open_redirect"]},
+            },
+        ),
+    )
+
+    sub = {g["risk_area"] for g in doc["gaps"] if g["kind"] == "unrecorded_sub_topic"}
+    assert "client-side path traversal" not in sub  # preserved carrier authorship counts
+
+
 def test_registry_backs_skill_phrasings_and_cwe() -> None:
     """_SKILL_PHRASINGS is derived from the registry, so they cannot drift."""
     assert _SKILL_PHRASINGS == {name: v.aliases for name, v in VULN_CLASSES.items()}
