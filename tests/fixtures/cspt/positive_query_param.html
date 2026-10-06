@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <!--
-  CSPT fixture - Expected classification: positive (exploitable).
+  CSPT fixture - positive: the unguarded source-to-sink primitive is present
+  (impact is proven separately, per the client_side_path_traversal skill).
   Source: URL query parameter (location.search). Sink: fetch() request path.
   The attacker-controlled value flows unmodified into the fetch path, so a
   value like ../../admin/keys redirects the victim's authenticated request.

@@ -920,7 +920,6 @@ _VULN_CLASS_KEYWORDS = (
     "default password",
     "session fixation",
     "open redirect",
-    "client-side path traversal",
     "path traversal",
     "directory traversal",
     "command injection",

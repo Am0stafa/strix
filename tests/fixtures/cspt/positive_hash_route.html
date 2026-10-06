@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <!--
-  CSPT fixture - Expected classification: positive (exploitable).
+  CSPT fixture - positive: the unguarded source-to-sink primitive is present
+  (impact is proven separately, per the client_side_path_traversal skill).
   Source: URL fragment (location.hash, a client hash router). Sink: fetch() path.
   The fragment is never sent to the server by the browser, so only a
   client-side trace shows the traversed request leaving the page.

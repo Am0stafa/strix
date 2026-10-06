@@ -170,6 +170,39 @@ def test_bundled_skill_with_every_surface_covered_is_clean() -> None:
     ]
 
 
+def test_unrelated_agents_row_does_not_cover_a_browser_subtopic() -> None:
+    """An open_redirect agent's 'meta refresh' row must not mark browser_security's
+    navigation surface covered — only a browser_security carrier's row counts."""
+    doc = _document(
+        entries=[
+            _entry(
+                risk_area="postMessage origin validation",
+                surface="listener",
+                agent_id="agent-1",
+                agent_name="browser-tester",
+            ),
+            _entry(
+                risk_area="open redirect via meta refresh",
+                surface="/login?next=",
+                agent_id="agent-2",
+                agent_name="redirect-tester",
+            ),
+        ],
+        agent_graph=_graph(
+            statuses={"agent-1": "completed", "agent-2": "completed"},
+            names={"agent-1": "browser-tester", "agent-2": "redirect-tester"},
+            metadata={
+                "agent-1": {"skills": ["browser_security"]},
+                "agent-2": {"skills": ["open_redirect"]},
+            },
+        ),
+    )
+
+    sub = {g["risk_area"] for g in doc["gaps"] if g["kind"] == "unrecorded_sub_topic"}
+    assert "navigation and redirect control" in sub  # not masked by the open_redirect row
+    assert "postMessage" not in sub  # the browser agent's own row still counts
+
+
 def test_registry_backs_skill_phrasings_and_cwe() -> None:
     """_SKILL_PHRASINGS is derived from the registry, so they cannot drift."""
     assert _SKILL_PHRASINGS == {name: v.aliases for name, v in VULN_CLASSES.items()}

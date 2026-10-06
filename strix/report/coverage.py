@@ -355,20 +355,35 @@ def skill_coverage_gaps(
         return []
 
     carriers: dict[str, list[str]] = {}
+    carrier_ids: dict[str, set[str]] = {}
     for agent in agents:
+        agent_id = str(agent.get("agent_id") or "")
         for skill in agent["skills"]:
             leaf = _skill_leaf(skill)
             if leaf in risk_skills:
                 carriers.setdefault(leaf, []).append(str(agent["agent_name"]))
+                if agent_id:
+                    carrier_ids.setdefault(leaf, set()).add(agent_id)
 
     gaps: list[dict[str, Any]] = []
     for skill, agent_names in sorted(carriers.items()):
         names = ", ".join(sorted(set(agent_names)))
         topics = _topics_for(skill)
+        # A bundled skill's surfaces are only covered by rows from an agent that
+        # actually carried that skill. Otherwise an unrelated row that merely
+        # shares a word — an open_redirect row mentioning "meta refresh" — would
+        # mask an untested browser surface. Single-topic skills keep the shared
+        # ledger semantics: any row naming the class counts, whoever wrote it.
+        vclass = VULN_CLASSES.get(skill)
+        if vclass is not None and vclass.sub_topics:
+            owner_ids = carrier_ids.get(skill, set())
+            relevant = [e for e in entries if str(e.get("agent_id") or "") in owner_ids]
+        else:
+            relevant = entries
         uncovered = [
             (label, wordlists)
             for label, wordlists in topics
-            if not any(_entry_is_about(entry, wordlists) for entry in entries)
+            if not any(_entry_is_about(entry, wordlists) for entry in relevant)
         ]
         if not uncovered:
             continue

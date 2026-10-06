@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 from agents import RunContextWrapper, function_tool
 
 from strix.report.coverage import selectable_finding_classes
+from strix.report.sarif import _build_physical_locations
 from strix.tools.nullish import clean_optional
 from strix.tools.proxy.tools import existing_request_ids
 
@@ -858,18 +859,24 @@ async def _do_create(
             f"Invalid finding_class: {finding_class!r}. "
             f"Must be one of: {sorted(_VALID_FINDING_CLASSES)}"
         )
-    elif finding_class == "client_side_path_traversal" and not (
-        str(endpoint or "").strip() or parsed_locations
-    ):
+    elif finding_class == "client_side_path_traversal":
         # CSPT findings are typically locationless (the bug is in a JS bundle,
-        # not a server route), so without a discriminator multiple distinct
-        # CSPT findings collapse onto one synthetic SARIF fingerprint.
-        errors.append(
-            "finding_class 'client_side_path_traversal' needs a discriminator so "
-            "locationless CSPT findings do not collapse onto one SARIF fingerprint: "
-            "set endpoint (the traversed target path, e.g. '/admin/keys') and method, "
-            "or a code_location for the vulnerable client-side sink."
-        )
+        # not a server route), so without a discriminator multiple distinct CSPT
+        # findings collapse onto one synthetic SARIF fingerprint. The anchor has
+        # to be one SARIF can actually use: an endpoint (→ route), or a
+        # code_location that survives _build_physical_locations (a repo-relative
+        # file with a real start line — an absolute or drive path is dropped and
+        # would leave the finding synthetic and collapsed).
+        has_endpoint = bool(str(endpoint or "").strip())
+        physical_locations, _dropped = _build_physical_locations(parsed_locations)
+        if not (has_endpoint or physical_locations):
+            errors.append(
+                "finding_class 'client_side_path_traversal' needs a discriminator SARIF "
+                "can anchor, or distinct CSPT findings collapse onto one fingerprint: set "
+                "endpoint (the traversed target path, e.g. '/admin/keys') and method, or a "
+                "code_location with a repo-relative file and start line (not an absolute or "
+                "drive path, which SARIF drops)."
+            )
 
     if errors:
         return {"success": False, "error": "Validation failed", "errors": errors}
