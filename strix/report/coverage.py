@@ -333,10 +333,19 @@ def _entry_is_about(entry: dict[str, Any], phrasings: list[list[str]]) -> bool:
 
     A phrasing matches when every one of its words appears as a **word** in the
     row (``risk_area`` + ``surface``) — not as a substring, so "brute force"
-    never counts as ``rce`` coverage and "corridor" never as ``idor``.
+    never counts as ``rce`` coverage and "corridor" never as ``idor``. As a
+    fallback it also matches the phrasing's words joined into one token, so a
+    row that recorded a joined / CamelCase name the normalizer kept whole
+    ("DirectoryTraversal" -> "directorytraversal", "XSLeaks" -> "xsleaks")
+    still counts — still a whole-token check, never a substring.
     """
     words = set(_normalized(f"{entry.get('risk_area', '')} {entry.get('surface', '')}").split())
-    return any(all(_term_in_words(term, words) for term in terms) for terms in phrasings)
+    for terms in phrasings:
+        if all(_term_in_words(term, words) for term in terms):
+            return True
+        if len(terms) > 1 and _term_in_words("".join(terms), words):
+            return True
+    return False
 
 
 def _entry_authored_by(entry: dict[str, Any], owner_ids: set[str]) -> bool:

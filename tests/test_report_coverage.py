@@ -104,6 +104,17 @@ def test_substring_match_does_not_hide_a_gap() -> None:
         assert skill.replace("_", " ") in classes, (skill, surface, risk, classes)
 
 
+def test_joined_camelcase_name_counts_as_coverage() -> None:
+    """A row recorded as a joined/CamelCase class name ('DirectoryTraversal')
+    still counts, via the joined-token fallback — no substring matching."""
+    doc = _document(
+        entries=[_entry(risk_area="DirectoryTraversal reviewed", surface="/download")],
+        agent_graph=_graph(metadata={"agent-1": {"skills": ["path_traversal_lfi_rfi"]}}),
+    )
+
+    assert not [g for g in doc["gaps"] if g["kind"] == "unrecorded_risk_class"]
+
+
 def test_simple_plural_still_counts_as_coverage() -> None:
     """Whole-word matching tolerates a trivial plural, so 'passwords' /
     'credentials' still cover weak_password_detection."""
