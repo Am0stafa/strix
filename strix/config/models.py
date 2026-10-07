@@ -905,6 +905,12 @@ def model_supports_reasoning(model_name: str) -> bool:
     return bool(entry and entry.get("supports_reasoning"))
 
 
+def model_supports_images(model_name: str) -> bool:
+    """Return whether the model accepts image input. Assume yes until proven otherwise."""
+    entry = _catalog_entry(model_name)
+    return entry is None or bool(entry.get("supports_vision"))
+
+
 def _bare_openai_name(model_name: str) -> str:
     name = model_name.strip().lower()
     for prefix in ("litellm/", "any-llm/", "openai/"):
